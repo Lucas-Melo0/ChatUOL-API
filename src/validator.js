@@ -5,6 +5,15 @@ const userSchema = Joi.object({
   name: Joi.string().required(),
 });
 
-const validateUser = validator(userSchema);
+const messageSchema = Joi.object({
+  to: Joi.string().required(),
+  text: Joi.string().required(),
+  type: Joi.string()
+    .required()
+    .pattern(/^private_message|message/),
+});
 
-export { validateUser };
+const validateUser = validator(userSchema);
+const validateMessage = validator(messageSchema);
+
+export { validateUser, validateMessage };
