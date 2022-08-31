@@ -32,15 +32,28 @@ server.post("/messages", (req, res) => {
   const message = req.body;
   const { error } = validateMessage(message);
   const { user } = req.headers;
+
   if (error || !user) {
     return res.sendStatus(422);
   }
 
   messages.push({ ...message, from: user, time: currentTime });
-  console.log(messages);
+
   return res.sendStatus(200);
 });
 
+server.get("/messages", (req, res) => {
+  const { limit } = req.query;
+  const { user } = req.headers;
+  const allowedMessages = messages.filter(
+    (value) =>
+      value.to === user || value.from === user || value.type === "message"
+  );
+  if (limit) {
+    return res.status(200).send(allowedMessages.slice(-limit));
+  }
+  return res.status(200).send(allowedMessages.reverse());
+});
 server.listen(5000, () => {
   console.log("listening on 5000");
 });
