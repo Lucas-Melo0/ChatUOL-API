@@ -54,6 +54,16 @@ server.get("/messages", (req, res) => {
   }
   return res.status(200).send(allowedMessages.reverse());
 });
+
+server.post("/status", (req, res) => {
+  const { user } = req.headers;
+  const activeUser = users.find((value) => value.name === user);
+  if (!activeUser) {
+    return res.sendStatus(404);
+  }
+  activeUser.lastStatus = Date.now();
+  res.send("OK");
+});
 server.listen(5000, () => {
   console.log("listening on 5000");
 });
