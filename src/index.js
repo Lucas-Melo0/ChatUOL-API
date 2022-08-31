@@ -3,9 +3,14 @@ import { validateUser, validateMessage } from "./validator.js";
 const server = express();
 server.use(express.json());
 
-const users = [];
+let users = [];
 const messages = [];
 
+const removeInactiveUser = () => {
+  users = users.filter((user) => Date.now() - user.lastStatus <= 10);
+};
+
+setInterval(removeInactiveUser, 10000);
 server.post("/participants", (req, res) => {
   const user = req.body;
   const { error } = validateUser(user);
@@ -62,7 +67,7 @@ server.post("/status", (req, res) => {
     return res.sendStatus(404);
   }
   activeUser.lastStatus = Date.now();
-  res.send("OK");
+  res.sendStatus(200);
 });
 server.listen(5000, () => {
   console.log("listening on 5000");
