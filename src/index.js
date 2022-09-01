@@ -2,34 +2,62 @@ import express from "express";
 import { validateUser, validateMessage } from "./validator.js";
 import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
+import cors from "cors";
 dotenv.config();
 
 const server = express();
 server.use(express.json());
+server.use(cors());
 
-const mongoClient = new MongoClient("mongodb://localhost:27017");
+const mongoClient = new MongoClient(process.env.MONGO_URI);
 const usersCollection = mongoClient.db("test").collection("participants");
-/* const removeInactiveUser = () => {
-  users = users.filter((user) => Date.now() - user.lastStatus <= 10);
+const messageCollection = mongoClient.db("test").collection("messages");
+const currentTime = new Date().toLocaleTimeString("en-GB");
+
+const removeInactiveUser = async () => {
+  await mongoClient.connect();
+  const users = await usersCollection.find().toArray();
+  for (let i = 0; i < users.length; i++) {
+    if (Date.now() - users[i].lastStatus >= 10000) {
+      await usersCollection.deleteOne({ name: users[i].name });
+      await messageCollection.insertOne({
+        from: users[i].name,
+        to: "Todos",
+        text: "sai da sala",
+        type: "status",
+        time: currentTime,
+      });
+    }
+  }
 };
 
-setInterval(removeInactiveUser, 10000); */
+setInterval(removeInactiveUser, 15000);
 
 server.post("/participants", async (req, res) => {
   const user = req.body;
   const { error } = validateUser(user);
   const { name } = user;
-  const isDuplicate = users.find((value) => value.name === name);
+
   if (error) {
     return res.sendStatus(422);
   }
-  if (isDuplicate) {
-    return res.sendStatus(409);
-  }
+
   try {
     await mongoClient.connect();
     const participant = { ...user, lastStatus: Date.now() };
+    const users = await usersCollection.find().toArray();
+    const isDuplicate = users.find((value) => value.name === name);
+    if (isDuplicate) {
+      return res.sendStatus(409);
+    }
     await usersCollection.insertOne(participant);
+    await messageCollection.insertOne({
+      from: name,
+      to: "Todos",
+      text: "Entra na sala",
+      type: "status",
+      time: currentTime,
+    });
     res.sendStatus(201);
     mongoClient.close();
   } catch (error) {
@@ -51,7 +79,6 @@ server.get("/participants", async (req, res) => {
 });
 
 server.post("/messages", async (req, res) => {
-  const currentTime = new Date().toLocaleTimeString("en-GB");
   const { error } = validateMessage(req.body);
   const { user } = req.headers;
 
@@ -60,7 +87,6 @@ server.post("/messages", async (req, res) => {
   }
   try {
     await mongoClient.connect();
-    const messageCollection = mongoClient.db("test").collection("messages");
     const message = { ...req.body, from: user, time: currentTime };
     await messageCollection.insertOne(message);
     res.sendStatus(201);
@@ -76,7 +102,6 @@ server.get("/messages", async (req, res) => {
   const { user } = req.headers;
   try {
     await mongoClient.connect();
-    const messageCollection = mongoClient.db("test").collection("messages");
     const messages = await messageCollection.find().toArray();
     const allowedMessages = messages.filter(
       (value) =>
@@ -112,6 +137,6 @@ server.post("/status", async (req, res) => {
     return res.sendStatus(500);
   }
 });
-server.listen(5000, () => {
-  console.log("listening on 5000");
+server.listen(process.env.PORT, () => {
+  console.log(`listening on ${process.env.PORT}`);
 });
