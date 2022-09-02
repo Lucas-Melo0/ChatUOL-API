@@ -59,9 +59,9 @@ server.post("/participants", async (req, res) => {
       time: currentTime,
     });
     res.sendStatus(201);
-    mongoClient.close();
   } catch (error) {
     res.sendStatus(422);
+  } finally {
     mongoClient.close();
   }
 });
@@ -71,9 +71,9 @@ server.get("/participants", async (req, res) => {
     await mongoClient.connect();
     const users = await usersCollection.find().toArray();
     res.status(200).send(users);
-    mongoClient.close();
   } catch (error) {
     res.sendStatus(500);
+  } finally {
     mongoClient.close();
   }
 });
@@ -85,14 +85,15 @@ server.post("/messages", async (req, res) => {
   if (error || !user) {
     return res.sendStatus(422);
   }
+
   try {
     await mongoClient.connect();
     const message = { ...req.body, from: user, time: currentTime };
     await messageCollection.insertOne(message);
     res.sendStatus(201);
-    mongoClient.close();
   } catch (error) {
     res.sendStatus(422);
+  } finally {
     mongoClient.close();
   }
 });
@@ -111,9 +112,9 @@ server.get("/messages", async (req, res) => {
       return res.status(200).send(allowedMessages.slice(-limit));
     }
     res.status(200).send(allowedMessages.reverse());
-    mongoClient.close();
   } catch (error) {
     res.sendStatus(500);
+  } finally {
     mongoClient.close();
   }
 });
