@@ -1,7 +1,7 @@
 import express from "express";
 import { validateUser, validateMessage } from "./validator.js";
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import cors from "cors";
 dotenv.config();
 
@@ -59,7 +59,7 @@ server.post("/participants", async (req, res) => {
       time: currentTime,
     });
     res.sendStatus(201);
-  } catch (error) {
+  } catch (err) {
     res.sendStatus(422);
   } finally {
     mongoClient.close();
@@ -136,6 +136,36 @@ server.post("/status", async (req, res) => {
     return res.sendStatus(200);
   } catch (error) {
     return res.sendStatus(500);
+  } finally {
+    mongoClient.close();
+  }
+});
+
+server.delete("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { user } = req.headers;
+
+  try {
+    await mongoClient.connect();
+    const messages = await messageCollection.find().toArray();
+    const isExistingMessage = messages.find((message) =>
+      message._id.equals(ObjectId(id))
+    );
+    const isMessageFromUser = messages.find((message) => message.from === user);
+
+    if (!isExistingMessage) {
+      return res.sendStatus(404);
+    }
+    if (!isMessageFromUser) {
+      return res.sendStatus(401);
+    }
+
+    await messageCollection.deleteOne({ _id: ObjectId(id) });
+    return res.send("ok");
+  } catch (error) {
+    res.sendStatus(500);
+  } finally {
+    mongoClient.close();
   }
 });
 server.listen(process.env.PORT, () => {
