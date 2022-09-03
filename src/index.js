@@ -161,8 +161,33 @@ server.delete("/messages/:id", async (req, res) => {
     }
 
     await messageCollection.deleteOne({ _id: ObjectId(id) });
-    return res.send("ok");
+    return res.sendStatus(200);
   } catch (error) {
+    res.sendStatus(500);
+  } finally {
+    mongoClient.close();
+  }
+});
+
+server.put("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { user } = req.headers;
+  const { error } = validateMessage(req.body);
+  if (error) {
+    return res.sendStatus(422);
+  }
+  try {
+    await mongoClient.connect();
+    const message = await messageCollection.findOne({ _id: ObjectId(id) });
+    if (!message) {
+      return res.sendStatus(404);
+    }
+    if (user !== message.from) {
+      return res.sendStatus(401);
+    }
+    await messageCollection.updateOne(message, { $set: req.body });
+    res.sendStatus(200);
+  } catch (err) {
     res.sendStatus(500);
   } finally {
     mongoClient.close();
