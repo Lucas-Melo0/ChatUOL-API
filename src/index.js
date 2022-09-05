@@ -2,6 +2,7 @@ import express from "express";
 import { validateUser, validateMessage } from "./validator.js";
 import dotenv from "dotenv";
 import { MongoClient, ObjectId } from "mongodb";
+import { stripHtml } from "string-strip-html";
 import cors from "cors";
 dotenv.config();
 
@@ -13,6 +14,11 @@ const mongoClient = new MongoClient(process.env.MONGO_URI);
 const usersCollection = mongoClient.db("test").collection("participants");
 const messageCollection = mongoClient.db("test").collection("messages");
 const currentTime = new Date().toLocaleTimeString("en-GB");
+
+const stringSanitazing = (string) => {
+  let sanitized = stripHtml(string).result;
+  return sanitized.trim();
+};
 
 const removeInactiveUser = async () => {
   await mongoClient.connect();
@@ -36,8 +42,8 @@ setInterval(removeInactiveUser, 15000);
 server.post("/participants", async (req, res) => {
   const user = req.body;
   const { error } = validateUser(user);
-  const { name } = user;
-
+  const name = stringSanitazing(user.name);
+  console.log(name);
   if (error) {
     return res.sendStatus(422);
   }
@@ -81,6 +87,7 @@ server.get("/participants", async (req, res) => {
 server.post("/messages", async (req, res) => {
   const { error } = validateMessage(req.body);
   const { user } = req.headers;
+  const { text } = req.body;
 
   if (error || !user) {
     return res.sendStatus(422);
@@ -88,7 +95,12 @@ server.post("/messages", async (req, res) => {
 
   try {
     await mongoClient.connect();
-    const message = { ...req.body, from: user, time: currentTime };
+    const message = {
+      ...req.body,
+      text: stringSanitazing(text),
+      from: stringSanitazing(user),
+      time: currentTime,
+    };
     await messageCollection.insertOne(message);
     res.sendStatus(201);
   } catch (error) {
