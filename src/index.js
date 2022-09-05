@@ -43,7 +43,7 @@ server.post("/participants", async (req, res) => {
   const user = req.body;
   const { error } = validateUser(user);
   const name = stringSanitazing(user.name);
-  console.log(name);
+
   if (error) {
     return res.sendStatus(422);
   }
@@ -118,7 +118,10 @@ server.get("/messages", async (req, res) => {
     const messages = await messageCollection.find().toArray();
     const allowedMessages = messages.filter(
       (value) =>
-        value.to === user || value.from === user || value.type === "message"
+        value.to === user ||
+        value.from === user ||
+        value.type === "message" ||
+        value.type === "status"
     );
     if (limit) {
       return res.status(200).send(allowedMessages.slice(-limit));
